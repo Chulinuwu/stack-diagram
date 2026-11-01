@@ -8,10 +8,10 @@ Describe your stack in a sentence. Get an architecture diagram with official log
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/hero-dark.png">
-  <img src="docs/hero.png" alt="Architecture diagram: a user reaches Next.js on Vercel over HTTPS; Next.js calls a Hono API in Cloudflare Workers, which queries Neon, stores files in Cloudflare R2 and caches in Upstash; Next.js uses Clerk for auth; GitHub Actions deploys" width="100%">
+  <img src="docs/hero.png" alt="Architecture diagram: a user reaches Next.js on Vercel over HTTPS; Next.js calls a Hono API in the same Vercel deployment over RPC; Hono queries Neon over SQL and calls Clerk for sessions and Stripe for checkout; GitHub Actions deploys" width="100%">
 </picture>
 
-> Diagram our stack: Next.js on Vercel calls a Hono API on Cloudflare Workers. Postgres on Neon, auth with Clerk, files in R2, rate limiting with Upstash. GitHub Actions deploys.
+> Diagram our stack: Next.js and a Hono API on Vercel. Postgres on Neon, auth with Clerk, payments with Stripe. GitHub Actions deploys.
 
 ```bash
 npx skills add caru-ini/stack-diagram
