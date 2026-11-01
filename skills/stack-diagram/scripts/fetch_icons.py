@@ -8,6 +8,7 @@ Spec forms:
   name              -> slug == name          (e.g. hono)
   name:slug         -> different slug        (e.g. betterauth:better-auth)
   name=URL          -> explicit URL          (e.g. orpc=https://orpc.unnoq.com/logo.webp)
+  name:aws/Service  -> official AWS icon     (e.g. lambda:aws/AWS-Lambda)
 
 Sources tried in order:
   1. svgl              api.svgl.app?search={s} -> route (light variant when split)
@@ -17,22 +18,46 @@ Sources tried in order:
 simple-icons is deliberately not a source: its glyphs are monochrome redraws, not the
 official marks. When every source misses, pass the official file as name=URL.
 
+aws/ specs and the slugs aws, amazonwebservices and aws-* skip the chain and read AWS's own
+package (aws.amazon.com/architecture/icons): gilbarbara's aws-* files keep an older color set.
+
 svgl is matched by normalized title equality (search is fuzzy — a loose match would
 silently ship the wrong brand's logo, so non-exact hits fall through to next source).
 
 Writes OUTDIR/<name>.<ext> and OUTDIR/manifest.json, plus OUTDIR/<name>_dark.<ext> when
-svgl has a dark-theme variant (for group labels). Flags white/near-white fills
+the source has a dark-theme variant (for group labels). Flags white/near-white fills
 (use a dark tile for those). Never modifies icon colors.
 """
-import base64, json, pathlib, re, sys, urllib.request, urllib.error, urllib.parse
+import base64, functools, http.client, io, json, pathlib, re, sys, urllib.request, urllib.error, urllib.parse, zipfile
 
 UA = {"User-Agent": "Mozilla/5.0 (stack-diagram-skill)"}
 NAME_RE = re.compile(r"[A-Za-z0-9_-]+")   # becomes a filename and an %%ICON_<name>%% token
+AWS_ICONS_PAGE = "https://aws.amazon.com/architecture/icons/"
+AWS_PACKAGE_RE = re.compile(r"""(?:https:)?//[\w.-]+\.awsstatic\.com/[^"'\s]+/Icon-package_[^"'\s/]+\.zip""")
+AWS_ICON_RE = re.compile(r"Architecture-Service-Icons_[^/]+/[^/]+/64/Arch_(.+)_64\.svg"
+                         r"|Architecture-Group-Icons_[^/]+/(.+)_32\.svg"
+                         r"|Resource-Icons_[^/]+/Res_General-Icons/Res_48_Light/Res_(.+)_48_Light\.svg")
+AWS_ALIASES = {
+    "s3": "Amazon-Simple-Storage-Service", "glacier": "Amazon-Simple-Storage-Service-Glacier",
+    "sqs": "Amazon-Simple-Queue-Service", "sns": "Amazon-Simple-Notification-Service",
+    "ses": "Amazon-Simple-Email-Service", "ecs": "Amazon-Elastic-Container-Service",
+    "eks": "Amazon-Elastic-Kubernetes-Service", "ecr": "Amazon-Elastic-Container-Registry",
+    "elb": "Elastic-Load-Balancing", "alb": "Elastic-Load-Balancing", "nlb": "Elastic-Load-Balancing",
+    "iam": "AWS-Identity-and-Access-Management", "kms": "AWS-Key-Management-Service",
+    "msk": "Amazon-Managed-Streaming-for-Apache-Kafka", "opensearch": "Amazon-OpenSearch-Service",
+    "vpc": "Virtual-private-cloud-VPC",
+}
+AWS_PACKAGES = {}
 
 def get(url, timeout=15):
     req = urllib.request.Request(url, headers=UA)
     with urllib.request.urlopen(req, timeout=timeout) as r:
         return r.read()
+
+def read(url):
+    """Bytes of url; '<AWS package URL>#<member>' reads from the already-downloaded zip."""
+    zip_url, _, member = url.partition("#")
+    return AWS_PACKAGES[zip_url].read(member) if zip_url in AWS_PACKAGES else get(url)
 
 def looks_svg(b): return b.lstrip()[:200].lstrip().startswith((b"<svg", b"<?xml", b"<!DOC"))
 def ext_of(b, url):
@@ -82,10 +107,52 @@ def svgl_lookup(slug):
                 return route, None
     return None
 
+@functools.lru_cache(maxsize=1)
+def aws_index():
+    """AWS's icon package as {normalized name: (name, url, dark url or None)}. The package URL
+    changes with each release, so it is read from the icons page; the zip is downloaded once
+    per run and stays in memory."""
+    link = AWS_PACKAGE_RE.search(get(AWS_ICONS_PAGE).decode("utf-8", "ignore"))
+    if not link:
+        raise OSError(f"no Icon-package link on {AWS_ICONS_PAGE}")
+    url = urllib.parse.urljoin(AWS_ICONS_PAGE, link.group())
+    AWS_PACKAGES[url] = zipfile.ZipFile(io.BytesIO(get(url)))
+    files = set(AWS_PACKAGES[url].namelist())
+    index = {}
+    for f in sorted(files):
+        m = AWS_ICON_RE.fullmatch(f)
+        if m:
+            # the General- prefix keeps General-Shield from taking the short name of AWS-Shield
+            name = m.group(1) or m.group(2) or f"General-{m.group(3)}"
+            dark = f.replace("_Light", "_Dark") if m.group(3) else f[:-4] + "_Dark.svg"
+            index.setdefault(norm(name), (name, f"{url}#{f}", f"{url}#{dark}" if dark in files else None))
+    return index
+
+def aws_sources(query):
+    """Exact match on the package's names or an acronym, with the AWS-/Amazon- prefix optional.
+    A miss lists every name: a partial match could ship the wrong service's icon."""
+    try:
+        index = aws_index()
+    except (OSError, zipfile.BadZipFile, http.client.HTTPException) as e:
+        print(f"AWS  icon package unavailable: {e}")
+        return []
+    q = norm(AWS_ALIASES.get(norm(query), query))
+    hit = index.get(q) or next((v for k, v in index.items() if re.sub(r"^(aws|amazon)", "", k) == q), None)
+    if hit:
+        return [("aws", hit[1], hit[2])]
+    print(f"AWS  {query!r} is not a name in the package. Names: {', '.join(sorted(v[0] for v in index.values()))}")
+    return []
+
 def sources(slug):
     # concept icons: slug "lucide/<icon-name>" -> Lucide line icon (browse: lucide.dev/icons)
     if slug.startswith("lucide/"):
         return [("lucide", f"https://cdn.jsdelivr.net/npm/lucide-static/icons/{slug[7:]}.svg", None)]
+    if slug.startswith("aws/"):
+        return aws_sources(slug[4:])
+    if norm(slug) in ("aws", "amazonwebservices"):
+        return aws_sources("AWS-Cloud-logo")
+    if slug[:4].lower() == "aws-":
+        return aws_sources(slug[4:])
     out = []
     svgl = svgl_lookup(slug)
     if svgl:
@@ -117,7 +184,7 @@ def main():
         got = None
         for src, url, dark_url in tries:
             try:
-                b = get(url)
+                b = read(url)
             except (urllib.error.URLError, urllib.error.HTTPError, OSError):
                 continue
             ext = ext_of(b, url)
@@ -145,7 +212,7 @@ def main():
                              "actually white overall. Never recolor.")
         if dark_url:
             try:
-                db = get(dark_url)
+                db = read(dark_url)
             except (urllib.error.URLError, urllib.error.HTTPError, OSError):
                 db = b""
             dext = ext_of(db, dark_url) if len(db) >= 50 else None

@@ -40,6 +40,16 @@ Works with Claude Code, Codex, Cursor and [other agents that support skills](htt
       <blockquote>Draw our docs chatbot: Next.js on Vercel searches Supabase pgvector and answers with Claude. Inngest syncs Notion every night.</blockquote>
     </td>
   </tr>
+  <tr>
+    <td colspan="2" valign="top">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="docs/aws-dark.png">
+        <img src="docs/aws.png" alt="AWS diagram: a user reaches CloudFront over HTTPS; CloudFront serves static paths from S3 and sends API paths to an ALB in a VPC's public subnet; the ALB forwards to Fargate in a private subnet, which queries RDS over SQL and uses ElastiCache as a cache" width="100%">
+      </picture>
+      <p><b>AWS, with AWS's own icons</b></p>
+      <blockquote>Draw our app on AWS: CloudFront in front of S3 and an ALB in a public subnet. Fargate, RDS and ElastiCache sit in a private subnet.</blockquote>
+    </td>
+  </tr>
 </table>
 
 ## Light and dark
@@ -59,7 +69,7 @@ The diagram is one HTML file with its fonts and logos inlined, so it renders any
 
 ## What you get
 
-- **Official logos, fetched for you.** From [svgl](https://svgl.app), then [devicon](https://devicon.dev), then [gilbarbara/logos](https://github.com/gilbarbara/logos), or the brand's own repository. Never recolored or redrawn.
+- **Official logos, fetched for you.** From [svgl](https://svgl.app), then [devicon](https://devicon.dev), then [gilbarbara/logos](https://github.com/gilbarbara/logos), or the brand's own repository. AWS icons come from [AWS's own package](https://aws.amazon.com/architecture/icons/). Never recolored or redrawn.
 - **No arrows through text.** Lines are routed around labels, and the agent renders the diagram and checks it before handing it over.
 - **The format you need.** A self-contained HTML file (default), PNG, a dependency-free React component, or an Artifact.
 
@@ -69,4 +79,4 @@ Requires Python 3.9+ and network access for the logos. PNG export uses Playwrigh
 
 - Code and docs: MIT — see `LICENSE`.
 - Bundled fonts: SIL Open Font License 1.1 — see `skills/stack-diagram/assets/fonts/`.
-- Logos are **not** bundled with the skill. They are downloaded at build time from [svgl](https://svgl.app), [devicon](https://devicon.dev) (MIT), [gilbarbara/logos](https://github.com/gilbarbara/logos) (CC0) and [Lucide](https://lucide.dev) (ISC), or from the brand's own site or repository. The example images in `docs/` show third-party logos. All brand names and logos are trademarks of their respective owners; their use in a diagram does not imply endorsement. The scripts never recolor or alter a logo.
+- Logos are **not** bundled with the skill. They are downloaded at build time from [svgl](https://svgl.app), [devicon](https://devicon.dev) (MIT), [gilbarbara/logos](https://github.com/gilbarbara/logos) (CC0), [AWS Architecture Icons](https://aws.amazon.com/architecture/icons/) and [Lucide](https://lucide.dev) (ISC), or from the brand's own site or repository. The example images in `docs/` show third-party logos. All brand names and logos are trademarks of their respective owners; their use in a diagram does not imply endorsement. The scripts never recolor or alter a logo.
