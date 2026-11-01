@@ -1,5 +1,9 @@
 # stack-diagram
 
+[![Release](https://img.shields.io/github/v/release/caru-ini/stack-diagram)](https://github.com/caru-ini/stack-diagram/releases/latest)
+[![License](https://img.shields.io/github/license/caru-ini/stack-diagram)](LICENSE)
+[![skills.sh](https://skills.sh/b/caru-ini/stack-diagram)](https://skills.sh/caru-ini/stack-diagram)
+
 Describe your stack in a sentence. Get an architecture diagram with official logos.
 
 <picture>
