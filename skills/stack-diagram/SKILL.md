@@ -65,11 +65,30 @@ Read `references/geometry.md` for the coordinate system, spacing constants, and 
 
 ## Step 4 — Build
 
-Copy `assets/template.html`, replace the sample GROUPS / EDGES / NODES / header sections with yours (the template's markup doubles as format documentation), then inline the assets. Set `lang` on `<html>` to the language of the diagram's labels (`en` by default; use `ja` for Japanese so browsers pick Japanese glyph variants). Two options the template already carries: a **dark variant** (set `data-theme="dark"` on `<html>`; tiles stay white so logos survive, group-label icons follow the Step 2 rule, and arrowheads and legend swatches follow the tokens automatically), and a "deploy to platform X" edge where X is a group, not a node — point the arrow at the most representative node *inside* the group and label the edge (`deploy`), which reads correctly.
+Copy `assets/template.html`, replace the sample GROUPS / EDGES / NODES / header sections with yours (the template's markup doubles as format documentation), then inline the assets. Set `lang` on `<html>` to the language of the diagram's labels (`en` by default; use `ja` for Japanese so browsers pick Japanese glyph variants). Without a `data-theme` attribute the page follows the viewer's OS light/dark setting. Two options the template already carries: a **dark variant** (set `data-theme="dark"` on `<html>` to force it; tiles stay white so logos survive, group-label icons follow the Step 2 rule, and arrowheads and legend swatches follow the tokens automatically), and a "deploy to platform X" edge where X is a group, not a node — point the arrow at the most representative node *inside* the group and label the edge (`deploy`), which reads correctly.
 
 ```bash
 python3 scripts/build.py my-diagram.html <icons-dir> out.html --fonts <skill>/assets/fonts
 ```
+
+### Node details (click to open)
+
+The template ships a dialog: any `.node` with `data-id="<id>"` (plus `tabindex="0" role="button" aria-haspopup="dialog" aria-label="<Name>: details"`) opens it on click, Enter or Space, filled from the `<script type="application/json" id="node-info">` block near the end of the file. Nodes without `data-id` stay plain, and `{}` ships a diagram with no dialogs. Esc, the close button or a backdrop click closes it and focus returns to the node.
+
+```json
+{"relay": {"title": "Upload relay", "role": "cloudflare worker", "rows": [
+  ["What", "Receives upload parts and writes them to R2."],
+  ["Why", "Users are far from the storage region; the edge is close to them."],
+  ["Where", "Cloudflare Worker at upload.example.com."],
+  ["Connects to", "Browser in, R2 out."],
+  ["Notes", "Files over 64 MiB go direct."]]}}
+```
+
+Add details when the user wants the diagram to explain itself (what a part does, why it exists, where it runs). Rules:
+- The drawing keeps short labels; the dialog carries the detail. Never move dialog prose into node roles.
+- Rows in this order, skipping any you cannot support: What, Why, Where, Connects to, Notes. One or two sentences each, in the diagram's language.
+- Every fact comes from a source you read (config, deploy files, runbooks, the user). Leave out what you cannot verify rather than guess, and never include secret values.
+- Escape `</` as `<\/` inside the JSON block.
 
 Icons are referenced in markup as `%%ICON_<name>%%`; fonts as `%%FONT_DISPLAY%%` (Geist) / `%%FONT_JBM%%` (JetBrains Mono). The build fails loudly on unresolved tokens. Keep every color and font behind the CSS custom properties already in the template — tweak the tokens, not scattered values.
 
@@ -89,6 +108,7 @@ Checklist while looking at it:
 - Every icon visible (white-on-white is the classic failure → dark tile), including group-label icons in the dark render
 - Group labels sit in their group's top-left corner, clear of nodes and edges; each group's left and right padding match
 - Nothing sticks out of its group box; nothing clipped at canvas edge
+- If the diagram has node details: click a few nodes in a browser (and press Enter on one) and confirm the dialog opens with the right content in both themes and at phone width; the PNG never shows the dialog
 
 Fix and re-render until clean. This loop is cheap; shipping a diagram with overlapping text is not.
 
@@ -96,7 +116,7 @@ Fix and re-render until clean. This loop is cheap; shipping a diagram with overl
 
 - **HTML** (default): the built file itself. Self-contained, works offline.
 - **PNG**: always produced by screenshotting the built HTML with headless Chromium (`render_png.py`, `--scale 2` for crisp text) — never by drawing a separate image with matplotlib/PIL/standalone SVG rasterizers; the HTML is the single source of truth and the browser's text/SVG rendering is what makes it look right. By default the script emits BOTH themes (`out.png` light + `out-dark.png`) with square corners (radius is stripped for the screenshot only) — deliver both unless the user asked for one; `--single` captures the document as-authored. Target `.canvas` for just the diagram, `--full-page` for the whole page.
-- **TSX**: convert per `references/tsx.md` (self-contained React component, no deps).
+- **TSX**: convert per `references/tsx.md` (self-contained React component, no deps). Node details do not carry over unless you port the dialog to React state.
 - **Artifact** (where the environment offers an artifact or page-publishing tool): publish the built HTML with the environment's artifact tool. Everything is already inlined as data URIs, so the artifact's blocked-network sandbox is a non-issue. Prefer this when the user will iterate on the diagram in conversation; pair it with a PNG when they need something to paste elsewhere.
 
 If several formats are requested, build the HTML once and derive the rest from it.
